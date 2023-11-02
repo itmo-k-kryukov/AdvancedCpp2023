@@ -1,40 +1,42 @@
 #include <utility>
-#include <iostream>
 #include <boost/asio.hpp>
-#include <glog/logging.h>
+#include <boost/beast.hpp>
+#include <iostream>
 
-void init_glog(char** argv) {
-    google::InitGoogleLogging(argv[0]);
-    // google::InitGoogleTest(&argc, argv);
-    FLAGS_alsologtostderr = 1;
-}
+namespace asio = boost::asio;
+namespace beast = boost::beast;
 
-int main(int argc, char** argv) {
-    init_glog(argv);
-    
-    using namespace boost::asio;
-    
-    io_service ioService;
-    ip::tcp::endpoint endpoint(ip::tcp::v4(), 12345);
+int main() {
+    // Создаем экземпляр io_context
+    asio::io_context io_context;
 
-    auto sock = ip::tcp::socket{ioService};
-    auto acceptor = ip::tcp::acceptor{ioService, endpoint};
+    // Создаем TCP acceptor для приема входящих соединений
+    asio::ip::tcp::acceptor acceptor(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 12345));
 
+    while (true) {
+        // Создаем сокет и ждем входящее соединение
+        asio::ip::tcp::socket socket(io_context);
+        acceptor.accept(socket);
 
-    LOG(INFO) << "Accepting...";
-    acceptor.accept(sock);
+        // Читаем данные из сокета
+        beast::flat_buffer buffer;
+        beast::http::request<beast::http::string_body> request;
+        beast::http::read(socket, buffer, request);
 
-    char s[256];
+        // Формируем ответ
+        beast::http::response<beast::http::string_body> response;
+        response.version(request.version());
+        response.result(beast::http::status::ok);
+        response.set(beast::http::field::content_type, "text/plain");
+        response.body() = "Hello";
+        response.prepare_payload();
 
-    LOG(INFO) << "Reading some...";
-    auto data = sock.read_some(buffer(s));
+        // Отправляем ответ
+        beast::http::write(socket, response);
 
-
-    for (auto c : s) {
-        std::cout << c << ' ';
+        // Закрываем соединение
+        socket.shutdown(asio::ip::tcp::socket::shutdown_send);
     }
-
-    sock.close();
 
     return 0;
 }
