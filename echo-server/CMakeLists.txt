@@ -9,10 +9,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(Boost REQUIRED)
 find_package(glog REQUIRED)
+find_package(nlohmann_json 3.2.0 REQUIRED)
 
 add_executable(echo-server main.cpp)
 
-target_link_libraries(echo-server Boost::headers glog)
+target_link_libraries(echo-server Boost::headers glog nlohmann_json::nlohmann_json)
 
 # include(CTest)
 # if (BUILD_TESTING)
